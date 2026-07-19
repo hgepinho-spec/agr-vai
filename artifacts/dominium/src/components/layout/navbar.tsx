@@ -4,6 +4,7 @@ import { Menu, X, LogIn, LogOut, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import logoImg from "@/assets/logo.png";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -112,6 +113,7 @@ export function Navbar() {
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-2">
+              <img src={logoImg} alt="Dominium DayZ" className="h-10 w-10 object-contain" />
               <span className="font-display text-3xl font-bold tracking-widest text-white">
                 DOMINIUM<span className="text-primary">DAYZ</span>
               </span>
