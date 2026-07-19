@@ -1,0 +1,1 @@
+- [Railway deploy fixes](railway-deploy-fixes.md) — conjunto de problemas e soluções para deploy no Railway com pnpm monorepo + Node 22 + Drizzle ORM
