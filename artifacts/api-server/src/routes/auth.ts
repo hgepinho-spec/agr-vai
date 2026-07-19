@@ -134,8 +134,9 @@ router.get("/auth/steam/callback", async (req, res): Promise<void> => {
       res.redirect("/");
     });
   } catch (err) {
-    console.error("[auth] Erro no callback:", err);
-    res.redirect("/?auth=error");
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[auth] Erro no callback:", message, err);
+    res.redirect(`/?auth=error&reason=${encodeURIComponent(message.slice(0, 100))}`);
   }
 });
 
