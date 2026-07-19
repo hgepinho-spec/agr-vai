@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request } from "express";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
@@ -6,19 +6,27 @@ import { eq } from "drizzle-orm";
 const router = Router();
 
 const STEAM_API_KEY = process.env.STEAM_API_KEY ?? "";
-const APP_URL = (process.env.APP_URL ?? "http://localhost:8080").replace(/\/$/, "");
 
 if (!STEAM_API_KEY) {
   console.warn("[auth] STEAM_API_KEY não definido — perfis Steam serão genéricos");
 }
 
-function getSteamAuthUrl(): string {
-  const callbackUrl = `${APP_URL}/api/auth/steam/callback`;
+/** Detecta o URL base correto a partir do request (funciona local e Railway/produção) */
+function getBaseUrl(req: Request): string {
+  // trust proxy está ativo, então req.protocol já reflete X-Forwarded-Proto
+  const protocol = req.protocol;
+  const host = req.get("host") ?? "localhost";
+  return `${protocol}://${host}`;
+}
+
+function getSteamAuthUrl(req: Request): string {
+  const base = getBaseUrl(req);
+  const callbackUrl = `${base}/api/auth/steam/callback`;
   const params = new URLSearchParams({
     "openid.ns": "http://specs.openid.net/auth/2.0",
     "openid.mode": "checkid_setup",
     "openid.return_to": callbackUrl,
-    "openid.realm": APP_URL,
+    "openid.realm": base,
     "openid.identity": "http://specs.openid.net/auth/2.0/identifier_select",
     "openid.claimed_id": "http://specs.openid.net/auth/2.0/identifier_select",
   });
@@ -83,8 +91,8 @@ async function getSteamProfile(steamId: string) {
 }
 
 // GET /api/auth/steam → redireciona para o Steam
-router.get("/auth/steam", (_req, res) => {
-  res.redirect(getSteamAuthUrl());
+router.get("/auth/steam", (req, res) => {
+  res.redirect(getSteamAuthUrl(req));
 });
 
 // GET /api/auth/steam/callback → verifica e cria sessão
