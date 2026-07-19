@@ -1,44 +1,67 @@
-# [Project name]
+# Dominium DayZ
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+Site oficial do servidor brasileiro de DayZ **Dominium** — com status ao vivo, notícias, loja VIP, ranking, equipe, FAQ, recurso de ban e contato.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- `pnpm --filter @workspace/api-server run dev` — roda o servidor de API (porta dinâmica via PORT)
+- `pnpm --filter @workspace/dominium run dev` — roda o frontend (porta dinâmica via PORT)
+- `pnpm run typecheck` — typecheck completo
+- `pnpm run build` — typecheck + build de todos os pacotes
+- `pnpm --filter @workspace/api-spec run codegen` — regenera hooks React Query e schemas Zod a partir do OpenAPI spec
+- `pnpm --filter @workspace/db run push` — aplica mudanças no schema do banco (dev only)
 - Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
 - pnpm workspaces, Node.js 24, TypeScript 5.9
+- Frontend: React + Vite + TailwindCSS v4, Wouter, TanStack Query
 - API: Express 5
 - DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
+- Validação: Zod (`zod/v4`), `drizzle-zod`
 - API codegen: Orval (from OpenAPI spec)
 - Build: esbuild (CJS bundle)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `artifacts/dominium/` — Frontend React/Vite (páginas, componentes, layout)
+- `artifacts/api-server/src/routes/` — Rotas da API Express
+- `artifacts/api-server/src/seed.ts` — Seed de dados iniciais (roda no startup)
+- `lib/api-spec/openapi.yaml` — Spec OpenAPI (fonte da verdade dos contratos)
+- `lib/api-client-react/src/generated/` — Hooks gerados pelo Orval
+- `lib/api-zod/src/generated/` — Schemas Zod gerados pelo Orval
+- `lib/db/src/schema/` — Schema do banco de dados (Drizzle)
 
 ## Architecture decisions
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+- O seed é chamado automaticamente no startup da API (`seedDatabase()` em `index.ts`)
+- Status do servidor é simulado (em produção integraria com a API do DayZ)
+- Jogadores online são gerados dinamicamente para simular o servidor real
+- Frontend usa `BASE_URL` do Vite para path-prefixed routing do workspace Replit
 
 ## Product
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+- **Home** — Hero com status ao vivo do servidor (jogadores, ping, mapa)
+- **Status** — Detalhes completos do servidor e lista de jogadores online
+- **Notícias** — Feed de notícias/atualizações com categorias e detalhes
+- **Loja** — Pacotes VIP com preços e benefícios
+- **Ranking** — Leaderboard por kills, sobrevivência, tempo de jogo e loot
+- **Regras** — Regras completas do servidor
+- **Equipe** — Staff do servidor com cargos e status
+- **FAQ** — Perguntas frequentes por categoria
+- **Recurso** — Formulário de recurso de banimento
+- **Contato** — Formulário de contato
+- **Mapa** — Mapa interativo do servidor
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- O usuário quer continuar a partir do site existente (restaurado do zip 2112-main). Preservar a estrutura e identidade visual.
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
+- Após qualquer mudança no `lib/api-spec/openapi.yaml`, rodar `pnpm --filter @workspace/api-spec run codegen`
+- O `pnpm --filter @workspace/db run push` só funciona com `DATABASE_URL` disponível
+- O frontend usa `import.meta.env.BASE_URL` — não usar paths absolutos hardcoded
 
 ## Pointers
 

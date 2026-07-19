@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "Dominium DayZ"
+version = "1.0.0"
+id = "artifacts/dominium"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21933
+
+[services.development]
+run = "pnpm --filter @workspace/dominium run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/dominium", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/dominium/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21933"
+BASE_PATH = "/"

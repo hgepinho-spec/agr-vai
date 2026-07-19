@@ -3,20 +3,39 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Dominium DayZ Server API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: server
+    description: Server status and stats
+  - name: news
+    description: News and announcements
+  - name: store
+    description: Store packages and donations
+  - name: leaderboard
+    description: Player leaderboards
+  - name: staff
+    description: Staff team members
+  - name: faq
+    description: Frequently asked questions
+  - name: banAppeals
+    description: Ban appeal submissions
+  - name: contact
+    description: Contact form
+  - name: votes
+    description: Server vote tracking
+  - name: players
+    description: Player management and search
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +43,342 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /server/status:
+    get:
+      operationId: getServerStatus
+      tags: [server]
+      summary: Get current server status
+      responses:
+        "200":
+          description: Server status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerStatus"
+
+  /server/stats:
+    get:
+      operationId: getServerStats
+      tags: [server]
+      summary: Get aggregate server statistics
+      responses:
+        "200":
+          description: Server stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerStats"
+
+  /news:
+    get:
+      operationId: getNews
+      tags: [news]
+      summary: List all news articles
+      responses:
+        "200":
+          description: List of news articles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NewsArticle"
+    post:
+      operationId: createNews
+      tags: [news]
+      summary: Create a news article
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NewsInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsArticle"
+
+  /news/{id}:
+    get:
+      operationId: getNewsById
+      tags: [news]
+      summary: Get a single news article
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: News article
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NewsArticle"
+        "404":
+          description: Not found
+
+  /store/packages:
+    get:
+      operationId: getStorePackages
+      tags: [store]
+      summary: List all store packages
+      responses:
+        "200":
+          description: List of packages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StorePackage"
+
+  /store/packages/{id}:
+    get:
+      operationId: getStorePackageById
+      tags: [store]
+      summary: Get a store package by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Store package
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorePackage"
+        "404":
+          description: Not found
+
+  /leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags: [leaderboard]
+      summary: Get player leaderboard
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [kills, survived, playtime, loot]
+            default: kills
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 25
+      responses:
+        "200":
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaderboardEntry"
+
+  /staff:
+    get:
+      operationId: getStaff
+      tags: [staff]
+      summary: Get staff team members
+      responses:
+        "200":
+          description: Staff members
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StaffMember"
+
+  /faq:
+    get:
+      operationId: getFaq
+      tags: [faq]
+      summary: Get FAQ items
+      responses:
+        "200":
+          description: FAQ items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FaqItem"
+
+  /ban-appeals:
+    post:
+      operationId: createBanAppeal
+      tags: [banAppeals]
+      summary: Submit a ban appeal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BanAppealInput"
+      responses:
+        "201":
+          description: Appeal submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BanAppeal"
+    get:
+      operationId: getBanAppeals
+      tags: [banAppeals]
+      summary: List all ban appeals
+      responses:
+        "200":
+          description: List of appeals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BanAppeal"
+
+  /ban-appeals/{id}:
+    get:
+      operationId: getBanAppealById
+      tags: [banAppeals]
+      summary: Get a ban appeal by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Ban appeal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BanAppeal"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateBanAppeal
+      tags: [banAppeals]
+      summary: Update ban appeal status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BanAppealUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BanAppeal"
+
+  /contact:
+    post:
+      operationId: submitContact
+      tags: [contact]
+      summary: Submit a contact message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactInput"
+      responses:
+        "201":
+          description: Message received
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactMessage"
+
+  /votes:
+    get:
+      operationId: getVotes
+      tags: [votes]
+      summary: Get current vote counts
+      responses:
+        "200":
+          description: Vote counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteCount"
+    post:
+      operationId: submitVote
+      tags: [votes]
+      summary: Submit a server vote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VoteInput"
+      responses:
+        "201":
+          description: Vote recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoteCount"
+
+  /players/online:
+    get:
+      operationId: getOnlinePlayers
+      tags: [players]
+      summary: Get list of currently online players
+      responses:
+        "200":
+          description: Online players
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OnlinePlayer"
+
+  /players/search:
+    get:
+      operationId: searchPlayer
+      tags: [players]
+      summary: Search for a player by name
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Player found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerProfile"
+        "404":
+          description: Not found
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +389,310 @@ components:
       required:
         - status
 
+    ServerStatus:
+      type: object
+      required: [online, playerCount, maxPlayers, serverName, map, ip, port, ping, uptime]
+      properties:
+        online:
+          type: boolean
+        playerCount:
+          type: integer
+        maxPlayers:
+          type: integer
+        serverName:
+          type: string
+        map:
+          type: string
+        ip:
+          type: string
+        port:
+          type: integer
+        ping:
+          type: integer
+        uptime:
+          type: string
+        version:
+          type: ["string", "null"]
+        password:
+          type: boolean
+
+    ServerStats:
+      type: object
+      required: [totalPlayersEver, totalHoursPlayed, totalKills, totalDeaths, totalVotes, serverAgedays]
+      properties:
+        totalPlayersEver:
+          type: integer
+        totalHoursPlayed:
+          type: integer
+        totalKills:
+          type: integer
+        totalDeaths:
+          type: integer
+        totalVotes:
+          type: integer
+        serverAgedays:
+          type: integer
+
+    NewsArticle:
+      type: object
+      required: [id, title, content, category, author, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+          enum: [update, event, announcement, maintenance]
+        author:
+          type: string
+        imageUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        pinned:
+          type: boolean
+
+    NewsInput:
+      type: object
+      required: [title, content, category, author]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        content:
+          type: string
+          minLength: 1
+        category:
+          type: string
+          enum: [update, event, announcement, maintenance]
+        author:
+          type: string
+        imageUrl:
+          type: string
+        pinned:
+          type: boolean
+
+    StorePackage:
+      type: object
+      required: [id, name, description, price, type, features, popular]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        type:
+          type: string
+          enum: [vip, vip_plus, premium, item_pack]
+        features:
+          type: array
+          items:
+            type: string
+        popular:
+          type: boolean
+        color:
+          type: ["string", "null"]
+        badgeText:
+          type: ["string", "null"]
+
+    LeaderboardEntry:
+      type: object
+      required: [rank, playerName, value, category, playtime, lastSeen]
+      properties:
+        rank:
+          type: integer
+        playerName:
+          type: string
+        value:
+          type: integer
+        category:
+          type: string
+        playtime:
+          type: integer
+        lastSeen:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+
+    StaffMember:
+      type: object
+      required: [id, name, role, discordTag, online]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        role:
+          type: string
+          enum: [owner, co_owner, admin, moderator, helper, developer]
+        discordTag:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+        online:
+          type: boolean
+        bio:
+          type: ["string", "null"]
+
+    FaqItem:
+      type: object
+      required: [id, question, answer, category, order]
+      properties:
+        id:
+          type: integer
+        question:
+          type: string
+        answer:
+          type: string
+        category:
+          type: string
+        order:
+          type: integer
+
+    BanAppeal:
+      type: object
+      required: [id, playerName, steamId, reason, description, status, createdAt]
+      properties:
+        id:
+          type: integer
+        playerName:
+          type: string
+        steamId:
+          type: string
+        reason:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pending, reviewing, approved, denied]
+        adminNote:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: ["string", "null"]
+
+    BanAppealInput:
+      type: object
+      required: [playerName, steamId, reason, description, discordTag]
+      properties:
+        playerName:
+          type: string
+          minLength: 1
+        steamId:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          minLength: 10
+        discordTag:
+          type: string
+        proofUrl:
+          type: string
+
+    BanAppealUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, reviewing, approved, denied]
+        adminNote:
+          type: string
+
+    ContactInput:
+      type: object
+      required: [name, email, subject, message]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+        subject:
+          type: string
+          minLength: 1
+        message:
+          type: string
+          minLength: 10
+
+    ContactMessage:
+      type: object
+      required: [id, name, email, subject, message, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        subject:
+          type: string
+        message:
+          type: string
+        createdAt:
+          type: string
+
+    VoteCount:
+      type: object
+      required: [totalVotes, monthlyVotes, weeklyVotes]
+      properties:
+        totalVotes:
+          type: integer
+        monthlyVotes:
+          type: integer
+        weeklyVotes:
+          type: integer
+
+    VoteInput:
+      type: object
+      required: [playerName]
+      properties:
+        playerName:
+          type: string
+          minLength: 1
+
+    OnlinePlayer:
+      type: object
+      required: [name, playtime, location]
+      properties:
+        name:
+          type: string
+        playtime:
+          type: integer
+        location:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+
+    PlayerProfile:
+      type: object
+      required: [name, kills, deaths, playtime, lastSeen, joinedAt]
+      properties:
+        name:
+          type: string
+        kills:
+          type: integer
+        deaths:
+          type: integer
+        playtime:
+          type: integer
+        lastSeen:
+          type: string
+        joinedAt:
+          type: string
+        kdr:
+          type: number
+        rank:
+          type: integer
+        avatarUrl:
+          type: ["string", "null"]
