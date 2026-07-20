@@ -83,11 +83,41 @@ async function queryViaSteamAPI(): Promise<ServerStatus | null> {
   }
 }
 
+/** Busca nomes de jogadores via BattleMetrics /servers/{id}/relationships/players */
+async function fetchBattleMetricsPlayers(serverId: string): Promise<void> {
+  try {
+    const url = `https://api.battlemetrics.com/servers/${serverId}/relationships/players?include=identifier&page[size]=100`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return;
+    const ct = res.headers.get("content-type") ?? "";
+    if (!ct.includes("json")) return;
+    const json = (await res.json()) as {
+      data?: Array<{ id: string; attributes?: { name?: string } }>;
+      included?: Array<{ type: string; attributes: { identifier?: string; name?: string } }>;
+    };
+
+    // Tenta primeiro os "included" (identifier type = Name)
+    const fromIncluded = (json.included ?? [])
+      .filter((i) => i.type === "identifier" && i.attributes.identifier)
+      .map((i) => ({ name: i.attributes.identifier ?? i.attributes.name ?? "Unknown", playtime: 0 }));
+
+    if (fromIncluded.length > 0) {
+      setPlayerCache(fromIncluded);
+      console.log(`[server] BattleMetrics players: ${fromIncluded.length}`);
+    }
+  } catch (err) {
+    console.warn("[server] BattleMetrics players failed:", err instanceof Error ? err.message : err);
+  }
+}
+
 /** Consulta via BattleMetrics (HTTPS público, sem chave) */
 async function queryViaBattleMetrics(): Promise<ServerStatus | null> {
   try {
-    const url = `https://api.battlemetrics.com/servers?filter[search]=${SERVER_IP}&filter[game]=dayz&page[size]=1&include=player`;
+    const url = `https://api.battlemetrics.com/servers?filter[search]=${SERVER_IP}&filter[game]=dayz&page[size]=1`;
     const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) return null;
+    const ct = res.headers.get("content-type") ?? "";
+    if (!ct.includes("json")) return null;
     const json = (await res.json()) as {
       data?: Array<{
         id: string;
@@ -101,25 +131,15 @@ async function queryViaBattleMetrics(): Promise<ServerStatus | null> {
           port: number;
         };
       }>;
-      included?: Array<{
-        type: string;
-        id: string;
-        attributes: { name: string };
-      }>;
     };
 
     const server = json.data?.[0];
     const srv = server?.attributes;
     if (!srv || srv.ip !== SERVER_IP) return null;
 
-    // Extrai nomes dos jogadores do campo "included"
-    const playerNames = (json.included ?? [])
-      .filter((i) => i.type === "player")
-      .map((i) => ({ name: i.attributes.name, playtime: 0 }));
-
-    if (playerNames.length > 0) {
-      setPlayerCache(playerNames);
-      console.log(`[server] BattleMetrics: ${playerNames.length} jogadores`);
+    // Busca nomes em paralelo (sem bloquear o status)
+    if (server.id) {
+      fetchBattleMetricsPlayers(server.id).catch(() => {});
     }
 
     return {
