@@ -86,10 +86,11 @@ async function queryViaSteamAPI(): Promise<ServerStatus | null> {
 /** Consulta via BattleMetrics (HTTPS público, sem chave) */
 async function queryViaBattleMetrics(): Promise<ServerStatus | null> {
   try {
-    const url = `https://api.battlemetrics.com/servers?filter[search]=${SERVER_IP}&filter[game]=dayz&page[size]=1`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const url = `https://api.battlemetrics.com/servers?filter[search]=${SERVER_IP}&filter[game]=dayz&page[size]=1&include=player`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
     const json = (await res.json()) as {
       data?: Array<{
+        id: string;
         attributes: {
           name: string;
           players: number;
@@ -100,10 +101,26 @@ async function queryViaBattleMetrics(): Promise<ServerStatus | null> {
           port: number;
         };
       }>;
+      included?: Array<{
+        type: string;
+        id: string;
+        attributes: { name: string };
+      }>;
     };
 
-    const srv = json.data?.[0]?.attributes;
+    const server = json.data?.[0];
+    const srv = server?.attributes;
     if (!srv || srv.ip !== SERVER_IP) return null;
+
+    // Extrai nomes dos jogadores do campo "included"
+    const playerNames = (json.included ?? [])
+      .filter((i) => i.type === "player")
+      .map((i) => ({ name: i.attributes.name, playtime: 0 }));
+
+    if (playerNames.length > 0) {
+      setPlayerCache(playerNames);
+      console.log(`[server] BattleMetrics: ${playerNames.length} jogadores`);
+    }
 
     return {
       online: srv.status === "online",
