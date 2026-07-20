@@ -82,6 +82,47 @@ async function queryViaSteamAPI(): Promise<ServerStatus | null> {
   }
 }
 
+/** Consulta via BattleMetrics (HTTPS público, sem chave) */
+async function queryViaBattleMetrics(): Promise<ServerStatus | null> {
+  try {
+    const url = `https://api.battlemetrics.com/servers?filter[search]=${SERVER_IP}&filter[game]=dayz&page[size]=1`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    const json = (await res.json()) as {
+      data?: Array<{
+        attributes: {
+          name: string;
+          players: number;
+          maxPlayers: number;
+          status: string;
+          details?: { map?: string; version?: string };
+          ip: string;
+          port: number;
+        };
+      }>;
+    };
+
+    const srv = json.data?.[0]?.attributes;
+    if (!srv || srv.ip !== SERVER_IP) return null;
+
+    return {
+      online: srv.status === "online",
+      playerCount: srv.players,
+      maxPlayers: srv.maxPlayers,
+      serverName: srv.name,
+      map: srv.details?.map ?? "Chernarus",
+      ip: SERVER_IP,
+      port: SERVER_PORT,
+      ping: 0,
+      password: false,
+      version: srv.details?.version ?? null,
+      uptime: null,
+    };
+  } catch (err) {
+    console.warn("[server] BattleMetrics query failed:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
 /** Consulta via GameDig (UDP — pode ser bloqueado em alguns ambientes cloud) */
 async function queryViaGameDig(): Promise<ServerStatus | null> {
   try {
@@ -116,10 +157,12 @@ async function queryServer(): Promise<ServerStatus> {
     return statusCache.data;
   }
 
-  // Tenta Steam API primeiro (HTTPS, mais confiável em cloud)
-  // Se não tiver key, tenta GameDig (UDP)
+  // 1. Steam Web API (HTTPS, requer STEAM_API_KEY)
+  // 2. BattleMetrics (HTTPS público, sem chave)
+  // 3. GameDig UDP (pode ser bloqueado em cloud)
   const data =
     (await queryViaSteamAPI()) ??
+    (await queryViaBattleMetrics()) ??
     (await queryViaGameDig()) ??
     OFFLINE_STATUS;
 
