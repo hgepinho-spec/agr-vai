@@ -110,10 +110,10 @@ export function Navbar() {
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-20 items-center justify-between">
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-2">
-              <img src={logoImg} alt="Dominium DayZ" className="h-8 w-8 object-contain flex-shrink-0" />
+              <img src={logoImg} alt="Dominium DayZ" className="h-20 w-20 object-contain flex-shrink-0 scale-125" />
               <span className="font-display text-3xl font-bold tracking-widest text-white">
                 DOMINIUM<span className="text-primary">DAYZ</span>
               </span>
