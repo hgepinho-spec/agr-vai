@@ -1,10 +1,11 @@
-import { useGetServerStatus } from "@workspace/api-client-react";
+import { useGetServerStatus, useGetOnlinePlayers } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Server, Activity, Users, Map as MapIcon, Shield, Clock, Wifi } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 export default function Status() {
   const { data: status, isLoading } = useGetServerStatus({ query: { refetchInterval: 30000 } });
+  const { data: players = [], isLoading: playersLoading } = useGetOnlinePlayers({ query: { refetchInterval: 30000 } });
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -133,12 +134,33 @@ export default function Status() {
               )}
             </div>
             
-            <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              <div className="text-center py-10 text-muted-foreground flex flex-col items-center">
-                <Users className="h-10 w-10 mb-4 opacity-20" />
-                <p>Lista de jogadores oculta</p>
-                <p className="text-xs mt-2">Segurança operacional ativa.</p>
-              </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {playersLoading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-9 w-full" />
+                ))
+              ) : players.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground flex flex-col items-center">
+                  <Users className="h-10 w-10 mb-4 opacity-20" />
+                  <p className="text-sm">Nenhum jogador online</p>
+                  <p className="text-xs mt-1 opacity-60">ou servidor offline</p>
+                </div>
+              ) : (
+                players.map((player, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between px-3 py-2 bg-background/50 border border-border/40 hover:border-primary/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse flex-shrink-0" />
+                      <span className="text-sm font-mono text-white truncate max-w-[140px]">{player.name}</span>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-mono flex-shrink-0">
+                      {player.playtime > 0 ? `${player.playtime}min` : ""}
+                    </span>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

@@ -2,21 +2,29 @@ import { Router } from "express";
 import { db } from "@workspace/db";
 import { leaderboardTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
+import { getPlayerCache } from "../lib/playerCache";
 
 const router = Router();
 
-// Simulated online players list (in production this would query game server API)
 const locations = ["Elektrozavodsk", "Chernogorsk", "Solnichniy", "Berezino", "Novaya Petrovka", "Severograd", "Tisy", "Vybor", "Zelenogorsk", "Gorka"];
 
-router.get("/players/online", (req, res) => {
-  const count = Math.floor(Math.random() * 30) + 10;
-  const players = Array.from({ length: count }, (_, i) => ({
-    name: `Survivor_${Math.floor(Math.random() * 9000) + 1000}`,
-    playtime: Math.floor(Math.random() * 240),
-    location: locations[Math.floor(Math.random() * locations.length)],
-    avatarUrl: null,
-  }));
-  res.json(players);
+router.get("/players/online", (_req, res) => {
+  const { players, age } = getPlayerCache();
+
+  // Cache fresco (menos de 2 min) e tem jogadores reais
+  if (players.length > 0 && age < 120_000) {
+    return res.json(
+      players.map((p) => ({
+        name: p.name,
+        playtime: Math.round(p.playtime / 60), // segundos → minutos
+        location: locations[Math.floor(Math.random() * locations.length)],
+        avatarUrl: null,
+      }))
+    );
+  }
+
+  // Sem cache real: retorna lista vazia (servidor offline ou sem dados)
+  return res.json([]);
 });
 
 router.get("/players/search", async (req, res): Promise<void> => {

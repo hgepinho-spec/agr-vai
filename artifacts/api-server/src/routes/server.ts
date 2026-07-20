@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { GameDig } from "gamedig";
+import { setPlayerCache } from "../lib/playerCache";
 
 const router = Router();
 
@@ -132,6 +133,13 @@ async function queryViaGameDig(): Promise<ServerStatus | null> {
       port: SERVER_PORT,
       givenUp: 5000,
     });
+
+    // Salva os nomes dos jogadores no cache compartilhado
+    setPlayerCache(
+      result.players
+        .filter((p) => p.name)
+        .map((p) => ({ name: p.name!, playtime: (p.time ?? 0) * 60 }))
+    );
 
     return {
       online: true,
