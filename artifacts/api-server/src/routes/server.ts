@@ -40,7 +40,52 @@ const OFFLINE_STATUS: ServerStatus = {
   uptime: null,
 };
 
-/** Consulta via Steam Web API (HTTPS — funciona em qualquer ambiente cloud) */
+/**
+ * Consulta via GameDig (protocolo A2S/UDP).
+ * Funciona em Railway e ambientes cloud que permitem UDP de saída.
+ * No Replit dev, UDP pode ser bloqueado — use Steam API como fallback.
+ */
+async function queryViaGameDig(): Promise<ServerStatus | null> {
+  try {
+    const result = await GameDig.query({
+      type: "dayz",
+      host: SERVER_IP,
+      port: SERVER_PORT,
+      givenUp: 6000,
+    });
+
+    // Salva os nomes dos jogadores no cache compartilhado
+    setPlayerCache(
+      result.players
+        .filter((p) => p.name)
+        .map((p) => ({ name: p.name!, playtime: (p.time ?? 0) * 60 }))
+    );
+
+    console.log(`[server] GameDig OK — ${result.players.length}/${result.maxplayers} jogadores`);
+
+    return {
+      online: true,
+      playerCount: result.players.length,
+      maxPlayers: result.maxplayers,
+      serverName: result.name,
+      map: result.map || "Chernarus",
+      ip: SERVER_IP,
+      port: SERVER_PORT,
+      ping: Math.round(result.ping),
+      password: result.password,
+      version: (result.raw as Record<string, unknown>)?.version as string ?? null,
+      uptime: null,
+    };
+  } catch (err) {
+    console.warn("[server] GameDig falhou:", err instanceof Error ? err.message : err);
+    return null;
+  }
+}
+
+/**
+ * Consulta via Steam Web API (HTTPS — funciona em qualquer ambiente cloud).
+ * Requer STEAM_API_KEY (gratuita em https://steamcommunity.com/dev/apikey).
+ */
 async function queryViaSteamAPI(): Promise<ServerStatus | null> {
   if (!STEAM_API_KEY) return null;
 
@@ -62,7 +107,12 @@ async function queryViaSteamAPI(): Promise<ServerStatus | null> {
     };
 
     const server = json.response?.servers?.[0];
-    if (!server) return null;
+    if (!server) {
+      console.warn("[server] Steam API: nenhum servidor encontrado para o IP/porta configurados");
+      return null;
+    }
+
+    console.log(`[server] Steam API OK — ${server.players}/${server.max_players} jogadores`);
 
     return {
       online: true,
@@ -78,121 +128,7 @@ async function queryViaSteamAPI(): Promise<ServerStatus | null> {
       uptime: null,
     };
   } catch (err) {
-    console.warn("[server] Steam API query failed:", err instanceof Error ? err.message : err);
-    return null;
-  }
-}
-
-/** Busca nomes de jogadores via BattleMetrics /servers/{id}/relationships/players */
-async function fetchBattleMetricsPlayers(serverId: string): Promise<void> {
-  try {
-    const url = `https://api.battlemetrics.com/servers/${serverId}/relationships/players?include=identifier&page[size]=100`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return;
-    const ct = res.headers.get("content-type") ?? "";
-    if (!ct.includes("json")) return;
-    const json = (await res.json()) as {
-      data?: Array<{ id: string; attributes?: { name?: string } }>;
-      included?: Array<{ type: string; attributes: { identifier?: string; name?: string } }>;
-    };
-
-    // Tenta primeiro os "included" (identifier type = Name)
-    const fromIncluded = (json.included ?? [])
-      .filter((i) => i.type === "identifier" && i.attributes.identifier)
-      .map((i) => ({ name: i.attributes.identifier ?? i.attributes.name ?? "Unknown", playtime: 0 }));
-
-    if (fromIncluded.length > 0) {
-      setPlayerCache(fromIncluded);
-      console.log(`[server] BattleMetrics players: ${fromIncluded.length}`);
-    }
-  } catch (err) {
-    console.warn("[server] BattleMetrics players failed:", err instanceof Error ? err.message : err);
-  }
-}
-
-/** Consulta via BattleMetrics (HTTPS público, sem chave) */
-async function queryViaBattleMetrics(): Promise<ServerStatus | null> {
-  try {
-    const url = `https://api.battlemetrics.com/servers?filter[search]=${SERVER_IP}&filter[game]=dayz&page[size]=1`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-    if (!res.ok) return null;
-    const ct = res.headers.get("content-type") ?? "";
-    if (!ct.includes("json")) return null;
-    const json = (await res.json()) as {
-      data?: Array<{
-        id: string;
-        attributes: {
-          name: string;
-          players: number;
-          maxPlayers: number;
-          status: string;
-          details?: { map?: string; version?: string };
-          ip: string;
-          port: number;
-        };
-      }>;
-    };
-
-    const server = json.data?.[0];
-    const srv = server?.attributes;
-    if (!srv || srv.ip !== SERVER_IP) return null;
-
-    // Busca nomes em paralelo (sem bloquear o status)
-    if (server.id) {
-      fetchBattleMetricsPlayers(server.id).catch(() => {});
-    }
-
-    return {
-      online: srv.status === "online",
-      playerCount: srv.players,
-      maxPlayers: srv.maxPlayers,
-      serverName: srv.name,
-      map: srv.details?.map ?? "Chernarus",
-      ip: SERVER_IP,
-      port: SERVER_PORT,
-      ping: 0,
-      password: false,
-      version: srv.details?.version ?? null,
-      uptime: null,
-    };
-  } catch (err) {
-    console.warn("[server] BattleMetrics query failed:", err instanceof Error ? err.message : err);
-    return null;
-  }
-}
-
-/** Consulta via GameDig (UDP — pode ser bloqueado em alguns ambientes cloud) */
-async function queryViaGameDig(): Promise<ServerStatus | null> {
-  try {
-    const result = await GameDig.query({
-      type: "dayz",
-      host: SERVER_IP,
-      port: SERVER_PORT,
-      givenUp: 5000,
-    });
-
-    // Salva os nomes dos jogadores no cache compartilhado
-    setPlayerCache(
-      result.players
-        .filter((p) => p.name)
-        .map((p) => ({ name: p.name!, playtime: (p.time ?? 0) * 60 }))
-    );
-
-    return {
-      online: true,
-      playerCount: result.players.length,
-      maxPlayers: result.maxplayers,
-      serverName: result.name,
-      map: result.map || "Chernarus",
-      ip: SERVER_IP,
-      port: SERVER_PORT,
-      ping: Math.round(result.ping),
-      password: result.password,
-      version: (result.raw as Record<string, unknown>)?.version as string ?? null,
-      uptime: null,
-    };
-  } catch (err) {
-    console.warn("[server] GameDig query failed:", err instanceof Error ? err.message : err);
+    console.warn("[server] Steam API falhou:", err instanceof Error ? err.message : err);
     return null;
   }
 }
@@ -202,13 +138,12 @@ async function queryServer(): Promise<ServerStatus> {
     return statusCache.data;
   }
 
-  // 1. Steam Web API (HTTPS, requer STEAM_API_KEY)
-  // 2. BattleMetrics (HTTPS público, sem chave)
-  // 3. GameDig UDP (pode ser bloqueado em cloud)
+  // 1. GameDig UDP — rápido, funciona no Railway e maioria dos ambientes cloud
+  // 2. Steam Web API — HTTPS, requer STEAM_API_KEY (gratuita), funciona em qualquer lugar
+  // 3. Offline — fallback quando nenhuma consulta funciona
   const data =
-    (await queryViaSteamAPI()) ??
-    (await queryViaBattleMetrics()) ??
     (await queryViaGameDig()) ??
+    (await queryViaSteamAPI()) ??
     OFFLINE_STATUS;
 
   statusCache = { data, ts: Date.now() };
